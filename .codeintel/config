@@ -1,0 +1,11 @@
+{
+    "Python": {
+        "python": 'ENV/bin/python',
+        "pythonExtraPaths": [
+            'src',
+            'tests',
+            'src/lib',
+            'deps/google_appengine',
+        ]
+    },
+}

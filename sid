@@ -1,0 +1,481 @@
+#!/usr/bin/env python
+import os
+import re
+import sys
+import pwd
+import pkgutil
+import subprocess
+from optparse import OptionParser, OptionGroup, Option, IndentedHelpFormatter
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+DOWNLOAD_DIR = os.path.join(ROOT_DIR, "deps", ".cache")
+DEPS_DIR = os.path.join(ROOT_DIR, "deps")
+LIB_DIR = os.path.join(ROOT_DIR, "src", "lib")
+SRC_DIR = os.path.join(ROOT_DIR, "src")
+TESTS_DIR = os.path.join(ROOT_DIR, "tests")
+APPENGINE_SDK_PATH = os.path.join(DEPS_DIR, "google_appengine")
+ENV_DIR = os.path.join(ROOT_DIR, "ENV")
+ENV_BIN = os.path.join(ENV_DIR, "bin")
+ENV_PYTHON_EXEC = os.path.join(ENV_BIN, "python")
+
+"""
+Template for dependency of type zipdep:
+"dep_name": {
+    "download_url": , # Download URL for a ZIP
+    "download_file": , # Target FILE (it will be downloaded in DOWNLOAD_DIR)
+    "dep_root": , # name of the root directory we use to check if the file was unzip
+    "dep_unzip_filter": , # so we unpack only the necessary files
+    "dep_link_from": , # place from where we are going to make a symbolic link (based on DEPS_DIR)
+    "lib_link_to": , # name of the symbolic link inside the lib folder
+    "type": "zipdep"
+}
+
+Template for dependency of type pipdep:
+"dep_name": {
+    "link": , # should we link this dep to the LIB_DIR ? (Optional, default = False)
+    "module_name": , # name of module to check so we can see if it is already installed (Optional)
+    "type": "zipdep"
+}
+"""
+
+DEPS = {
+    "appengine": {
+        "download_url": "http://googleappengine.googlecode.com/files/google_appengine_1.7.0.zip",
+        "download_file": "google_appengine_1.7.0.zip",
+        "dep_root": "google_appengine",
+        "dep_unzip_filter": "google_appengine/*",
+        "type": "zipdep"
+    },
+    "flask": {
+        "type": "pipdep",
+        "link": True,
+    },
+    "jinja2": {
+        "type": "pipdep",
+        "pip_name": "jinja2==2.6",
+        # Remember that we are loading jinja2 from appengine,
+        # so we need to keep in sync with app.yaml
+        "link": False,
+    },
+    "werkzeug": {
+        "type": "pipdep",
+        "link": True,
+    },
+    "mock": {
+        "type": "pipdep"
+    },
+    #"bpython": {
+    #    "type": "pipdep"
+    #}
+}
+
+
+def inform(msg):
+    print "================"
+    print msg
+    print "================"
+
+
+def check(condition, message):
+    """Exists if condition is false and prints message"""
+    if not condition:
+        print message
+        sys.exit(1)
+
+
+def exec_cmd(cmd, get_stdout=False, input=None):
+    p = subprocess.Popen(
+        cmd, shell=True,
+        stdout=subprocess.PIPE if get_stdout else None,
+        stdin=subprocess.PIPE if input else None
+    )
+    retvalue = None
+    retvalue = p.communicate(input)[0]
+    retcode = p.wait()
+
+    if retcode != 0:
+        if get_stdout:
+            print retvalue
+        print "Command failed with status code " + str(retcode) + ": ", cmd
+        sys.exit(1)
+
+    return retvalue
+
+
+class PosOptionParser(OptionParser):
+    def __init__(self, *args, **kwargs):
+        self.commands = []
+        if 'commands' in kwargs:
+            self.commands = kwargs['commands']
+            del kwargs['commands']
+        OptionParser.__init__(self, *args, **kwargs)
+
+    def format_help(self, formatter=None):
+        class Positional(object):
+            def __init__(self, args):
+                self.option_groups = []
+                self.option_list = args
+
+        fake_options = [
+            Option('--' + name, help=desc, action='store_true') for name, desc in self.commands
+        ]
+
+        positional = Positional(fake_options)
+        formatter = IndentedHelpFormatter()
+        formatter.store_option_strings(positional)
+        output = ['\n', formatter.format_heading("Commands")]
+        formatter.indent()
+        # Hack
+        pos_help = [formatter.format_option(option) for option in fake_options]
+        pos_help = [line.replace('--', '', 1) for line in pos_help]
+        output += pos_help
+        formatter.dedent()
+        return OptionParser.format_help(self, formatter) + ''.join(output)
+
+
+class atdir(object):
+    def __init__(self, dest_dir):
+        self._dest_dir = dest_dir
+
+    def __enter__(self):
+        self._old_dir = os.getcwd()
+        os.chdir(self._dest_dir)
+
+    def __exit__(self, type, value, traceback):
+        os.chdir(self._old_dir)
+
+    def __call__(self, f):
+        def wrapper(*args, **kwargs):
+            with self:
+                return f(*args, **kwargs)
+        return wrapper
+
+
+class FileOperation(object):
+
+    def _normpath(self, path):
+        if isinstance(path, list) or isinstance(path, tuple):
+            return os.path.join(*path)
+        else:
+            return path
+
+    def unzip(self, filepath, filter=None):
+        """unzips a file"""
+        cmd = "unzip \"{0}\"".format(self._normpath(filepath))
+        if filter:
+            cmd += " \"{0}\"".format(filter)
+        exec_cmd(cmd)
+
+    def download(self, url, name=None, dest_dir=DOWNLOAD_DIR):
+        """Downloads a file to the current dir"""
+        cmd = "wget -c \"{0}\"".format(url)
+        if name:
+            cmd += " -O \"{0}\"".format(name)
+        with atdir(dest_dir):
+            exec_cmd(cmd)
+
+    def clean(self, path):
+        """Deletes a file or a directory given by path"""
+        exec_cmd("rm -rf {0}".format(self._normpath(path)))
+
+    def link(self, from_, to):
+        """Creates a symbolic link"""
+        from_ = self._normpath(from_)
+        to = self._normpath(to)
+        exec_cmd("rm -rf {0}; ln -s \"{1}\" \"{2}\"".format(to, os.path.join(DEPS_DIR, from_), to))
+
+    def copy(self, from_, to):
+        """Makes a recursive copy"""
+        from_ = self._normpath(from_)
+        to = self._normpath(to)
+        exec_cmd("cp -rf \"{1}\" \"{2}\"".format(to, from_, to))
+
+    def exists(self, path):
+        return os.path.exists(self._normpath(path))
+
+    def mkdir_if_needed(self, directory):
+        exec_cmd("mkdir -p %s 2> /dev/null" % self._normpath(directory))
+
+    def which(self, program):
+        import os
+
+        def is_exe(fpath):
+            return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+        fpath, fname = os.path.split(program)
+        if fpath:
+            if is_exe(program):
+                return program
+        else:
+            for path in os.environ["PATH"].split(os.pathsep):
+                exe_file = os.path.join(path, program)
+                if is_exe(exe_file):
+                    return exe_file
+
+        return None
+
+fo = FileOperation()
+
+
+class ZipdepHandler(object):
+
+    def setup(self, dep_name, dep):
+        if not fo.exists((DOWNLOAD_DIR, dep["download_file"])):
+            fo.download(dep["download_url"], dep["download_file"])
+
+        if not fo.exists((DEPS_DIR, dep["dep_root"])):
+            with atdir(DEPS_DIR):
+                fo.unzip((DOWNLOAD_DIR, dep["download_file"]), filter=dep["dep_unzip_filter"])
+
+    def link(self, dep_name, dep):
+        if "dep_link_from" in dep and "lib_link_to" in dep:
+            fo.link((DEPS_DIR, dep["dep_link_from"]), (LIB_DIR, dep["lib_link_to"]))
+
+
+class PipdepHandler(object):
+
+    def _get_module_loader(self, dep_name, dep):
+        module_name = dep.get("module_name") or dep_name
+        module_loader = pkgutil.get_loader(module_name)
+        if not module_loader:
+            raise ImportError('No module {0}'.format(module_name))
+        return module_loader
+
+    def setup(self, dep_name, dep):
+        os.environ["PIP_DOWNLOAD_CACHE"] = DOWNLOAD_DIR
+        pip_name = dep.get("pip_name") or dep_name
+
+        try:
+            self._get_module_loader(dep_name, dep)
+        except ImportError:
+            exec_cmd('pip install {0}'.format(pip_name))
+
+    def link(self, dep_name, dep):
+        module_path = self._get_module_loader(dep_name, dep).filename
+        if dep.get("link", False):
+            fo.link(module_path, (LIB_DIR, os.path.basename(module_path)))
+
+
+dependency_handlers = {
+    "pipdep": PipdepHandler(),
+    "zipdep": ZipdepHandler()
+}
+
+
+def main_clean(options, args):
+    fo.clean(LIB_DIR)
+    for name in os.listdir(DEPS_DIR):
+        if name != '.cache':
+            fo.clean((DEPS_DIR, name))
+    fo.clean(ENV_DIR)
+
+
+def fix_python_path():
+    """Adds qwi, lib and appengine modules to the python path"""
+    import sys
+
+    sys.path.insert(0, LIB_DIR)
+    sys.path.insert(0, APPENGINE_SDK_PATH)
+    import dev_appserver
+    dev_appserver.fix_sys_path()
+
+    sys.path.insert(0, SRC_DIR)
+    sys.path.insert(0, TESTS_DIR)
+
+
+def main_test(options, args):
+    import unittest
+    fix_python_path()
+
+    loader = unittest.loader.TestLoader()
+    if len(args) == 0:
+        suite = loader.discover(TESTS_DIR, pattern="*_test.py")
+    else:
+        suite = unittest.TestSuite()
+        for name in args:
+            if name.lower() == name:
+                module_loader = pkgutil.get_loader(name)
+                if not module_loader:
+                    raise Exception('Module {0} not found'.format(name))
+                module_path = module_loader.filename
+                if os.isdir(module_path):
+                    suite.addTests(loader.discover(module_path, pattern="*_test.py"))
+                    continue
+            suite.addTests(loader.loadTestsFromName(name))
+    if options.verbose:
+        unittest.TextTestRunner(verbosity=2).run(suite)
+    else:
+        unittest.TextTestRunner().run(suite)
+
+
+def main_link(options, args):
+    """Creates links to libs so they are included in the appengine project"""
+    fo.clean(LIB_DIR)
+    fo.mkdir_if_needed(LIB_DIR)
+    setup_list = DEPS.keys()
+    for dep_name in setup_list:
+        dep = DEPS[dep_name]
+        dependency_handlers[dep["type"]].link(dep_name, dep)
+
+
+def main_setup(options, args):
+    """Downloads and install dependencies and makes some configurations"""
+
+    fo.mkdir_if_needed(DEPS_DIR)
+    fo.mkdir_if_needed(DOWNLOAD_DIR)
+
+    setup_list = DEPS.keys()
+    if args:
+        setup_list = args
+
+    for dep_name in setup_list:
+        dep = DEPS[dep_name]
+        dependency_handlers[dep["type"]].setup(dep_name, dep)
+
+    # Creating links
+    main_link(options, args)
+
+
+def use_unprivilliged_user():
+    if os.getuid() != 0:
+        return
+    stat_info = os.stat(os.path.abspath(__file__))
+    if stat_info.st_uid == 0:
+        return
+
+    inform(
+        "Relinquishing root user power.\n" +
+        "Using user {0}".format(pwd.getpwuid(stat_info.st_uid)[0]) +
+        " and group id {0}".format(stat_info.st_gid)
+    )
+    os.setgid(stat_info.st_gid)
+    os.setuid(stat_info.st_uid)
+
+
+def setup_and_enter_virtualenv_if_needed():
+    if os.path.abspath(sys.executable) == ENV_PYTHON_EXEC:
+        check(
+            fo.which("pip") == os.path.join(ENV_BIN, "pip"),
+            "pip seems not to be not installed on virtualenv"
+        )
+        check(
+            fo.which("python") == ENV_PYTHON_EXEC,
+            "python seems not to be installed on virtualenv"
+        )
+        return
+
+    if not fo.exists(ENV_DIR):
+        if not fo.which('pip'):
+            inform("pip not found, installing ...")
+            exec_cmd("easy_install pip")
+
+        if not fo.which('virtualenv'):
+            inform("virtualenv not found, installing ...")
+            exec_cmd("pip install virtualenv")
+
+        use_unprivilliged_user()
+        inform("virtualenv for Qwi not found, creating it ...")
+        with atdir(ROOT_DIR):
+            exec_cmd("virtualenv --no-site-packages ENV")
+
+    # Fixing path to use virtualenv
+    new_path = [ENV_BIN]
+    for entry in os.environ["PATH"].split(os.pathsep):
+        if entry != ENV_BIN:
+            new_path.append(entry)
+    os.environ["PATH"] = os.pathsep.join(new_path)
+
+    os.execl(ENV_PYTHON_EXEC, ENV_PYTHON_EXEC, *sys.argv)
+
+
+def main():
+    parser = PosOptionParser(
+        usage="sid [options] command",
+        description=(
+            "sid is a command line tool to manage most of the actions needed during development, "
+            "like testing, running the local dev server for appengine and others."
+            "\n\n"
+        ),
+        commands=(
+            ("setup", "Installs dependencies and required development tools "
+                "in a virtualenv (ENV). It also calls `sid link` at the end"),
+            (
+                "link",
+                "Clear all links on the appengine project to libs and "
+                    "creates them again\n"
+            ),
+            ("run", "Runs the local dev server for appengine"),
+            ("test [module]", "Runs tests. Optionally it runs tests only for the specified module"),
+            ("deploy", "Deploys application to appengine"),
+            ("shell", "Enters in an interactive shell where you "
+                "can interact with the app using the remote api"),
+            ("clean", "Deletes every dependency installed by setup and the virtualenv (ENV)"
+                "can interact with the local datastore"),
+        )
+    )
+    test_group = OptionGroup(parser, "test")
+    test_group.add_option("--failfast",
+                  action="store_true", dest="failfast", default=False,
+                  help="Stops test at first error")
+    test_group.add_option("-v", "--verbose",
+                  action="store_true", dest="verbose", default=False,
+                  help="Lists tests executed")
+    run_group = OptionGroup(parser, "run")
+    run_group.add_option("-p", "--port",
+                  action="store", dest="port", default="8080",
+                  help="port for the dev_appserver to run")
+    parser.add_option_group(test_group)
+    parser.add_option_group(run_group)
+
+    (options, args) = parser.parse_args()
+
+    if len(args) == 0:
+        print "No command given"
+
+    elif args[0] == "setup":
+        main_setup(options, args[1:])
+
+    elif args[0] == "shell":
+        if not sys.flags.interactive:
+            os.execl(ENV_PYTHON_EXEC, ENV_PYTHON_EXEC, '-i', *sys.argv)
+        fix_python_path()
+
+        from google.appengine.tools import dev_appserver
+        from google.appengine.tools import dev_appserver_main
+        appinfo, _, _ = dev_appserver.LoadAppConfig(
+            SRC_DIR, {}
+        )
+        dev_appserver.SetupStubs(appinfo.application, **dev_appserver_main.DEFAULT_ARGS)
+        print 'Remote Shell'
+
+    elif args[0] == "run":
+        os.execl(
+            ENV_PYTHON_EXEC,
+            ENV_PYTHON_EXEC,
+            os.path.join(DEPS_DIR, "google_appengine", "dev_appserver.py"),
+            "--port=" + options.port,
+            # "--address=0.0.0.0",
+            SRC_DIR
+        )
+
+    elif args[0] == "deploy":
+        # Remaking links to libs
+        main_link(options, args)
+        exec_cmd(
+            os.path.join(DEPS_DIR, "google_appengine", "appcfg.py") + " --oauth2 update " + SRC_DIR
+        )
+
+    elif args[0] == "test":
+        main_test(options, args[1:])
+
+    elif args[0] == "clean":
+        main_clean(options, args[1:])
+
+    else:
+        print 'No such command: ' + args[0]
+
+if __name__ == "__main__":
+    with atdir(ROOT_DIR):
+        setup_and_enter_virtualenv_if_needed()
+        use_unprivilliged_user()
+        main()
