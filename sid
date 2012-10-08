@@ -5,6 +5,7 @@ import sys
 import pwd
 import pkgutil
 import subprocess
+import urlparse
 from optparse import OptionParser, OptionGroup, Option, IndentedHelpFormatter
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -64,9 +65,9 @@ DEPS = {
     "mock": {
         "type": "pipdep"
     },
-    #"bpython": {
-    #    "type": "pipdep"
-    #}
+    "bpython": {
+        "type": "pipdep"
+    }
 }
 
 
@@ -420,12 +421,17 @@ def main():
     test_group.add_option("-v", "--verbose",
                   action="store_true", dest="verbose", default=False,
                   help="Lists tests executed")
+    shell_group = OptionGroup(parser, "shell")
+    shell_group.add_option("--host",
+                  action="store", dest="host", default="localhost:8080",
+                  help="The host to connect using the remote api.")
     run_group = OptionGroup(parser, "run")
     run_group.add_option("-p", "--port",
                   action="store", dest="port", default="8080",
                   help="port for the dev_appserver to run")
-    parser.add_option_group(test_group)
     parser.add_option_group(run_group)
+    parser.add_option_group(shell_group)
+    parser.add_option_group(test_group)
 
     (options, args) = parser.parse_args()
 
@@ -440,13 +446,25 @@ def main():
             os.execl(ENV_PYTHON_EXEC, ENV_PYTHON_EXEC, '-i', *sys.argv)
         fix_python_path()
 
-        from google.appengine.tools import dev_appserver
-        from google.appengine.tools import dev_appserver_main
-        appinfo, _, _ = dev_appserver.LoadAppConfig(
-            SRC_DIR, {}
+        import google.appengine.ext.remote_api.remote_api_stub as remote_api_stub
+
+        def auth_func():
+            # Probably localhost, so let's skip and give some fake admin user
+            if options.host.split(":")[0] in ("localhost", "127.0.0.1"):
+                return ("a@b", "b")
+
+            import getpass
+            return (raw_input('email: '), getpass.getpass('password: '))
+
+        remote_api_stub.ConfigureRemoteApi(
+            None,
+            "/_ah/remote_api",
+            auth_func,
+            options.host,
+            save_cookies=True,
         )
-        dev_appserver.SetupStubs(appinfo.application, **dev_appserver_main.DEFAULT_ARGS)
-        print 'Remote Shell'
+        remote_api_stub.MaybeInvokeAuthentication()
+        print "Remote shell"
 
     elif args[0] == "run":
         os.execl(
