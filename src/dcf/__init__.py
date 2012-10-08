@@ -7,7 +7,7 @@ try:
 except:
     DEBUG = False
 
-SECRET_KEY = 'development key'
+SECRET_KEY = '47e018f5adc30e4220cfa794f1339648'
 
 
 def _patch_werkzeug():
@@ -35,10 +35,8 @@ app = flask.Flask(__name__)
 app.debug = DEBUG
 flask.Flask.secret_key = SECRET_KEY
 
-
-@app.route("/")
-def hello_world():
-    return "Hello World!"
+import dcf.views.helloworld as helloworld_view
+app.register_blueprint(helloworld_view.bp)
 
 if DEBUG:
     import inspect
