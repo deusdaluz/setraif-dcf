@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 import os
-import re
 import sys
 import pwd
 import pkgutil
 import subprocess
-import urlparse
 from optparse import OptionParser, OptionGroup, Option, IndentedHelpFormatter
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -442,8 +440,6 @@ def main():
         main_setup(options, args[1:])
 
     elif args[0] == "shell":
-        if not sys.flags.interactive:
-            os.execl(ENV_PYTHON_EXEC, ENV_PYTHON_EXEC, '-i', *sys.argv)
         fix_python_path()
 
         import google.appengine.ext.remote_api.remote_api_stub as remote_api_stub
@@ -464,7 +460,8 @@ def main():
             save_cookies=True,
         )
         remote_api_stub.MaybeInvokeAuthentication()
-        print "Remote shell"
+        import bpython
+        bpython.embed()
 
     elif args[0] == "run":
         os.execl(

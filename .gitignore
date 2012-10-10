@@ -3,4 +3,5 @@ deps
 *.pyc
 src/lib
 .DS_Store
+dcf.sublime-workspace
 *~
