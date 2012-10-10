@@ -4,6 +4,7 @@ import sys
 import pwd
 import pkgutil
 import subprocess
+from distutils.sysconfig import get_python_lib
 from optparse import OptionParser, OptionGroup, Option, IndentedHelpFormatter
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -269,17 +270,22 @@ def main_clean(options, args):
     fo.clean(ENV_DIR)
 
 
-def fix_python_path():
-    """Adds qwi, lib and appengine modules to the python path"""
-    import sys
+def add_to_syspath(path):
+    if not path in sys.path:
+        sys.path.insert(0, path)
 
-    sys.path.insert(0, LIB_DIR)
-    sys.path.insert(0, APPENGINE_SDK_PATH)
+
+def project_paths():
+    add_to_syspath(APPENGINE_SDK_PATH)
     import dev_appserver
-    dev_appserver.fix_sys_path()
+    return [SRC_DIR, TESTS_DIR, LIB_DIR, APPENGINE_SDK_PATH] + dev_appserver.EXTRA_PATHS
 
-    sys.path.insert(0, SRC_DIR)
-    sys.path.insert(0, TESTS_DIR)
+
+def fix_python_path():
+    """Adds qwi, lib and appengine modules to the python path on virtualenv"""
+
+    for path in project_paths():
+        add_to_syspath(path)
 
 
 def main_test(options, args):
@@ -330,6 +336,10 @@ def main_setup(options, args):
     for dep_name in setup_list:
         dep = DEPS[dep_name]
         dependency_handlers[dep["type"]].setup(dep_name, dep)
+
+    # Creating .pth file
+    with open(os.path.join(get_python_lib(), "sid.pth"), "w+") as f:
+        f.write("\n".join(project_paths()) + "\n")
 
     # Creating links
     main_link(options, args)
@@ -407,7 +417,8 @@ def main():
             ("test [module]", "Runs tests. Optionally it runs tests only for the specified module"),
             ("deploy", "Deploys application to appengine"),
             ("shell", "Enters in an interactive shell where you "
-                "can interact with the app using the remote api"),
+                "can interact with the app using the remote api."
+                "It receives a second argument so you can run a script instead."),
             ("clean", "Deletes every dependency installed by setup and the virtualenv (ENV)"
                 "can interact with the local datastore"),
         )
@@ -442,24 +453,9 @@ def main():
     elif args[0] == "shell":
         fix_python_path()
 
-        import google.appengine.ext.remote_api.remote_api_stub as remote_api_stub
+        import dcf.utils.remote_api as remote_api_utils
+        remote_api_utils.configure(options.host)
 
-        def auth_func():
-            # Probably localhost, so let's skip and give some fake admin user
-            if options.host.split(":")[0] in ("localhost", "127.0.0.1"):
-                return ("a@b", "b")
-
-            import getpass
-            return (raw_input('email: '), getpass.getpass('password: '))
-
-        remote_api_stub.ConfigureRemoteApi(
-            None,
-            "/_ah/remote_api",
-            auth_func,
-            options.host,
-            save_cookies=True,
-        )
-        remote_api_stub.MaybeInvokeAuthentication()
         import bpython
         bpython.embed()
 
