@@ -1,0 +1,55 @@
+	<html>
+	    <head>
+	        <meta http-equiv="Content-type" content="text/html; charset=utf-8"/>
+	        <title>{% block title %}Blog{% endblock %}</title>
+	        <link href="static/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+	          <style type="text/css">
+				  .tiny-width {
+				    width: 130px;
+				    margin-right: 10px;
+					margin-top: 11px;
+				    }
+				    table{
+				    	margin: auto;
+				    }
+
+				    .center-text{
+				    	text-align: center;
+				    }
+  			</style>
+	    </head>
+	    <body>
+
+
+			<div class="navbar navbar-inverse navbar-fixed-top">
+		      <div class="navbar-inner">
+		        <div class="container">
+		          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+		            <span class="icon-bar"></span>
+		            <span class="icon-bar"></span>
+		            <span class="icon-bar"></span>
+		          </a>
+		          <a class="brand" href="#">Relatórios</a>
+		          <div class="nav-collapse collapse">
+		            <ul class="nav">
+		              <li class="active"><a href="/relatorio">Home</a></li>
+		              <li><a href="/about">About</a></li>
+		            </ul>
+		          </div><!--/.nav-collapse -->
+		        </div>
+		      </div>
+		    </div>
+
+ 			<div class = "container" style="margin-top: 62px;">
+		        	{% block content %}{% endblock %}
+		    </div>
+
+
+		</body>
+
+
+	    <script src="http://code.jquery.com/jquery-latest.js"></script>
+	    <script src="static/bootstrap/js/bootstrap.js"></script>
+
+
+	</html>
