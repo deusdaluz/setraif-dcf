@@ -1,6 +1,7 @@
 import flask
 import json
 from dcf.models.transacao import Transacao
+from dcf.models.transacao import Conta
 from flask import render_template
 from datetime import datetime
 
@@ -13,9 +14,6 @@ def message():
         "idTransaction":"1",
         "isFraud":"false" if "legitima" in flask.request.args else "true"
     })
-
-
-
 
 @bp.route("/relatorio")
 def relatorio():
@@ -37,6 +35,16 @@ def relatorio():
             transacoes = query.fetch()
 
     return render_template('list_transacoes.html', transacoes = transacoes , args = args)
+
+@bp.route("/conta")
+def conta():
+    args = flask.request.args
+
+    if not 'conta' in args:
+        return 'Conta nao disponivel'
+    
+    conta = Conta.get_by_id(args['conta'])
+    return render_template('conta_template.html', conta = conta)
 
 @bp.route("/about")
 def about():

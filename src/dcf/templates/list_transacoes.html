@@ -18,6 +18,7 @@ Relatório
 			<input name = "idDispositivo" type = "text" class = "tiny-width" placeholder = "Dispositivo" style = "height:30px" value = {{ args['idDispositivo'] }}></input>
 			<input name = "dataInic" type = "date" class = "tiny-width" placeholder = "Data Início" style = "height:30px" value = {{args['dataInic']}}></input>
 			<input name = "dataFim" type = "date" class = "tiny-width" placeholder = "Data Fim" style = "height:30px" value = {{ args['dataFim'] }}></input>
+			<input name = "ehFraude" type = "checkbox" class = "tiny-width" style = "height:30px; margin-right: 10px" value = True></input>
 			<input type="submit" class="btn" value="Pesquisar"></input>
 		</div>
 	</form>
@@ -38,7 +39,7 @@ Relatório
 
 		{% for transacao in transacoes %}
 		<tr>
-		    <td> {{ transacao.idConta }} </td>
+		    <td><a href="/conta?conta={{ transacao.idConta }}"> {{ transacao.idConta }} </a></td>
 		    <td> {{ transacao.idDispositivo }} </td>
 		    <td> {{ transacao.data }} </td>
 		    <td> {{ transacao.valor }} </td>
