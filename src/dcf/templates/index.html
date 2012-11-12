@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>DCF Setraif - Teste</title>
+    <!-- Bootstrap -->
+    <link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <script src="http://code.jquery.com/jquery-latest.js"></script>
+    <script src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <style>
+      #req, #resp {
+        width: 100%;
+        height: 250px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="span6">
+          <h3>Request Body</h3><br />
+          <textarea id="req">{
+  "idTransaction":"\n1",
+  "gpsLat":"45.1244324",
+  "gpsLong":"47.4234421",
+  "time":"14:23:01",
+  "date":"12/12/2012",
+  "value":"48,70",
+  "idDmtConsum":"123XCV32",
+  "idAccountConsum":"4545 5451 6548 8494"
+}
+</textarea>
+        </div>
+        <div class="span6">
+          <h3>Response Body</h3><br />
+          <textarea id="resp"></textarea>
+        </div>
+      </div>
+      <div class="row">
+        <div class="span12" style="text-align: center">
+          <button id="send" class="btn btn-success">Enviar</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      $("#send").click(function() {
+        try {
+          var req = JSON.parse($("#req").text())
+        } catch(e) {
+          $("#resp").text("Couldn't send, because the request body is not a valid json:\n" + e);
+        }
+
+        $("#resp").text("Sending ...");
+        $.ajax({
+          type: 'POST',
+          url: '/checar',
+          data: JSON.stringify(req),
+          processData: false,
+          dataType: 'json',
+          contentType: "application/json; charset=utf-8"
+        }).success(function(data) {
+          $("#resp").text(JSON.stringify(data));
+        }).error(function() {
+          $("#resp").text("Error sending the request");
+        })
+      });
+    </script>
+
+
+  </body>
+</html>

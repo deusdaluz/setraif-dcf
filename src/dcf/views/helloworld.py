@@ -4,15 +4,23 @@ from dcf.models.transacao import Transacao
 from dcf.models.transacao import Conta
 from flask import render_template
 from datetime import datetime
+from werkzeug.exceptions import BadRequest
 
 bp = flask.Blueprint("helloworld", __name__)
 
 
 @bp.route("/")
+def index():
+    return render_template('index.html')
+
+
+@bp.route("/checar", methods=["POST"])
 def message():
+    if flask.request.json is None:
+        raise BadRequest()
     return json.dumps({
-        "idTransaction":"1",
-        "isFraud":"false" if "legitima" in flask.request.args else "true"
+        "idTransaction": "1",
+        "isFraud": "false"
     })
 
 @bp.route("/relatorio")
@@ -36,6 +44,7 @@ def relatorio():
 
     return render_template('list_transacoes.html', transacoes = transacoes , args = args)
 
+
 @bp.route("/conta")
 def conta():
     args = flask.request.args
@@ -46,9 +55,11 @@ def conta():
     conta = Conta.get_by_id(args['conta'])
     return render_template('conta_template.html', conta = conta)
 
+
 @bp.route("/about")
 def about():
     return render_template('about.html')
+
 
 def convert(string_bool):
     if 'False' == string_bool:
