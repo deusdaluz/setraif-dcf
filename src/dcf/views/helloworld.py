@@ -4,9 +4,11 @@ import time
 import functools
 from dcf.models.transacao import Transacao
 from dcf.models.transacao import Conta
+import dcf.checks as checks
 from flask import render_template
 from datetime import datetime
 from werkzeug.exceptions import BadRequest
+import google.appengine.ext.ndb as ndb
 
 bp = flask.Blueprint("helloworld", __name__)
 
@@ -17,8 +19,7 @@ def index():
 
 
 class CheckException(BadRequest):
-    def __init__():
-
+    pass
 
 def json_view(view):
     @functools.wraps(view)
@@ -41,22 +42,23 @@ def checar():
             ("gpsLat", float),
             ("gpsLong", float),
             ("time", unicode),
-            ("date", unicodelambda inp: time.strptime(unicode(inp), "")),
+            ("date", unicode),
             ("value", float),
             ("idDmtConsum", unicode),
             ("idAccountConsum", unicode)
         )
 
         clean_data = {}
+        import logging
         for name, convert in fields:
             if not name in data:
-                raise CheckException("Field {} is missing".format(name))
+                raise CheckException("Field \"{}\" is missing".format(name))
 
             value = None
             try:
                 value = convert(data[name])
             except:
-                raise CheckException("Could not parse {}".format(name))
+                raise CheckException("Could not parse \"{}\"".format(name))
 
             clean_data[name] = value
 
@@ -68,25 +70,44 @@ def checar():
         except:
             raise CheckException("Could not parse time and/or date")
 
-        transacao = Transacao(
-            idConta=clean_data["idAccountConsum"],
-            idDispositivo=clean_data["idDmtConsum"],
-            id=clean_data["idAccountConsum"],
-            data=clean_data["datetime"],
-            valor=clean_data["value"],
-            latitude=clean_data["gpsLat"],
-            longitude=clean_data["gpsLong"]
-        )
+        @ndb.transactional(xg=True)
+        def check_and_save():
+            if Transacao.get_by_id(clean_data["idTransaction"]):
+                raise CheckException("This transaction already exists")
 
-        return json.dumps({
-            "idTransaction": "1",
-            "isFraud": "false"
-        })
+            conta = Conta.get_by_id(clean_data["idAccountConsum"])
+            if not conta:
+                raise CheckException("Invalid account")
+            conta_old_values = conta.to_dict()
+
+            transacao = Transacao(
+                idConta=clean_data["idAccountConsum"],
+                idDispositivo=clean_data["idDmtConsum"],
+                id=clean_data["idTransaction"],
+                data=clean_data["datetime"],
+                valor=clean_data["value"],
+                latitude=clean_data["gpsLat"],
+                longitude=clean_data["gpsLong"]
+            )
+            transacao.ehFraude = checks.is_fraud(transacao, conta)
+            checks.learn(transacao, conta)
+            if conta.to_dict() != conta_old_values:
+                conta.put()
+            transacao.put()
+
+            return transacao
+
+        transacao = check_and_save()
+
+        return {
+            "idTransaction": transacao.id,
+            "isFraud": "true" if transacao.ehFraude else "false"
+        }
 
     except CheckException, e:
-        return json.dumps({
+        return {
             "erroMsg": e.description
-        })
+        }
 
 @bp.route("/relatorio")
 def relatorio():
@@ -116,7 +137,7 @@ def conta():
 
     if not 'conta' in args:
         return 'Conta nao disponivel'
-    
+
     conta = Conta.get_by_id(args['conta'])
     return render_template('conta_template.html', conta = conta)
 
