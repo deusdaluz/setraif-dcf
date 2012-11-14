@@ -70,7 +70,7 @@ def checar():
         except:
             raise CheckException("Could not parse time and/or date")
 
-        @ndb.transactional(xg=True)
+        #@ndb.transactional(xg=True)
         def check_and_save():
             if Transacao.get_by_id(clean_data["idTransaction"]):
                 raise CheckException("This transaction already exists")
