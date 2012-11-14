@@ -3,7 +3,8 @@ from dcf.models.transacao import Transacao
 
 def is_fraud(transacao, conta):
     max = get_max_value(transacao, conta)
-
+    if max == 500000:
+    	return True
     if ((transacao.valor - max) > 1000):
     	if (transacao.valor > 1.8*max):
     		return True
@@ -16,9 +17,9 @@ def learn(transacao, conta):
 
 def get_max_value(transacao, conta):
 	key = ndb.Key('Conta', transacao.idConta)
-	transacoes = Transacao.query(ancestor = key).filter(Transacao.ehFraude == False).order(-Transacao.valor)
+	transacoes = Transacao.query(Transacao.idConta == transacao.idConta, Transacao.ehFraude == False).order(-Transacao.valor)
 	transacao_max = transacoes.get()
 	if (transacao_max is None):
 		return 0
 	else:
-		return transacao_max.get()
+		return transacao_max.valor
