@@ -19,14 +19,14 @@
         <div class="span6">
           <h3>Request Body</h3><br />
           <textarea id="req">{
-  "idTransaction":"\n1",
+  "idTransaction":"1",
   "gpsLat":"45.1244324",
   "gpsLong":"47.4234421",
   "time":"14:23:01",
   "date":"12/12/2012",
-  "value":"48,70",
+  "value":"48.70",
   "idDmtConsum":"123XCV32",
-  "idAccountConsum":"4545 5451 6548 8494"
+  "idAccountConsum":"1002"
 }
 </textarea>
         </div>
@@ -45,7 +45,7 @@
     <script>
       $("#send").click(function() {
         try {
-          var req = JSON.parse($("#req").text())
+          var req = JSON.parse($("#req").val())
         } catch(e) {
           $("#resp").text("Couldn't send, because the request body is not a valid json:\n" + e);
         }

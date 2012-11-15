@@ -465,6 +465,7 @@ def main():
             ENV_PYTHON_EXEC,
             os.path.join(DEPS_DIR, "google_appengine", "dev_appserver.py"),
             "--port=" + options.port,
+            "--high_replication",
             # "--address=0.0.0.0",
             SRC_DIR
         )
