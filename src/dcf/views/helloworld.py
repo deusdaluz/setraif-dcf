@@ -37,10 +37,24 @@ def relatorio():
                 query = query.filter(Transacao.data >= datetime.strptime(args[key], '%Y-%m-%d'))
             elif key == 'dataFim':
                 query =  query = query.filter(Transacao.data < datetime.strptime(args[key], '%Y-%m-%d'))
+            elif key == 'posicao':
+                posicao = args['posicao'].split('k')
+                if len(posicao) == 3:
+                    query = query.filter(Transacao.longitude >= float(posicao[0]))
+                    query = query.filter(Transacao.latitude >= float(posicao[1]))
+                    query = query.filter(Transacao.longitude <= float(posicao[2]))            
+                    query = query.filter(Transacao.latitude <= float(posicao[3]))
+
             else:
                 query = query.filter(getattr(Transacao,key) == args[key])
 
-            transacoes = query.fetch()
+    
+    transacoes = query.fetch()
+
+    if 'posicao' in args and args['posicao'] != '':
+         posicao = args['posicao'].split('k')
+         transacoes = [x for x in transacoes if x.latitude >= float(posicao[0]) and x.longitude >= float(posicao[1]) and x.latitude <= float(posicao[2]) and x.longitude <= float(posicao[3])]
+
 
     return render_template('list_transacoes.html', transacoes = transacoes , args = args)
 

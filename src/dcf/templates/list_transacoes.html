@@ -8,19 +8,173 @@ Relatório
 
 {% block content %}
 
+<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
+
+<script>
+      var geocoder;
+	  var position;
+	  var lat; 
+	  var lon; 
+	  var t = 1;
+	  var args = {
+	  	localizacao: [0.0, 0.0, 0.0, 0.0]
+	  };
+
+	  var map_results;
+	  
+	  <!-- var var  -->
+		function initialize() {
+			geocoder = new google.maps.Geocoder();
+			lista = document.URL.split('&');
+
+			for (var i = lista.length - 1; i >= 0; i--) {
+	
+				if(lista[i].indexOf('posicao')!=-1){
+					splitted = lista[i].split('=');
+					if(splitted.length > 1 ){
+						t = splitted[1].split('k')
+						for (var i = 0; i < 4; i++) {
+							args.localizacao[i]= parseFloat(t[i]);
+						};
+						
+					}
+				}
+			}
+		}
+
+		function show_transactions(){
+			
+			latitudes = $('td.latitude');
+			longitudes = $('td.longitude');
+			teste = '';
+
+			minLat = 0;
+			maxLat = 0;
+			minLon = 0;
+			maxLon = 0;
+
+			var mapOptions = {
+			  zoom: 5,
+			  center: new google.maps.LatLng(0,0),
+			  mapTypeId: google.maps.MapTypeId.ROADMAP
+			}
+
+			map_results = new google.maps.Map(document.getElementById('map_visualization'), mapOptions);
+
+			var latlngbounds = new google.maps.LatLngBounds();
+
+			for(i = 0; i < latitudes.length; i++){
+				latitude = parseFloat(latitudes[i].innerHTML)
+				longitude = parseFloat(longitudes[i].innerHTML)
+				latlngbounds.extend(new google.maps.LatLng(latitude, longitude));
+
+				var myLatLng = new google.maps.LatLng(latitude, longitude);
+	        	var beachMarker = new google.maps.Marker({
+	            	position: myLatLng,
+	            	map: map_results,
+	        	});
+			}
+
+	
+			var triangleCoords = [
+				new google.maps.LatLng(args.localizacao[0], args.localizacao[1]),
+				new google.maps.LatLng(args.localizacao[0], args.localizacao[3]),
+				new google.maps.LatLng(args.localizacao[2], args.localizacao[3]),
+				new google.maps.LatLng(args.localizacao[2], args.localizacao[1])
+			];
+
+			bermudaTriangle = new google.maps.Polygon({
+			  paths: triangleCoords,
+			  strokeColor: '#FF0000',
+			  strokeOpacity: 0.8,
+			  strokeWeight: 3,
+			  fillColor: '#FF0000',
+			  fillOpacity: 0.35
+			});
+
+			bermudaTriangle.setMap(map_results);
+
+
+			map_results.fitBounds(latlngbounds);
+		}
+
+
+	 
+      function send_form(){
+			var address = document.getElementById('address').value;
+			var xMax, xMin, yMax, yMin;
+			var Latbuffer = 0.07;
+			var Lonbuffer = 0.08;
+
+			
+			if(address != ''){
+
+				geocoder.geocode( { 'address': address}, function(results, status) {
+					if (status == google.maps.GeocoderStatus.OK) {
+						position = results[0].geometry.location;
+						
+						xMax = position.lat() + Latbuffer;
+						xMin = position.lat() - Latbuffer;
+						
+						yMax = position.lng() + Lonbuffer;
+						yMin = position.lng() - Lonbuffer;
+
+						document.getElementById('posicao-input').value = xMin + 'k' + yMin + 'k' + xMax + 'k' + yMax;
+						$('form')[0].submit();
+					} else{
+						alert('Esse endereço não foi encontrado.')
+					}
+
+
+				});
+			}
+			else{
+				$('form')[0].submit();
+			}
+      }
+
+    	function enter_pressed(event) {
+ 			if (event.keyCode == 13) {
+     			send_form();
+ 			}
+		};
+      
+    </script>
 
 
 
 <div class = "center-text">
+
+	<div> Filtros Comuns </div>
+
    	<form name='pesquisa' action="/relatorio?" method = "get">
-    	<div class="btn-group">
-			<input name = "idConta" type = "text" class = "tiny-width" placeholder = "Conta" style = "height:30px" value = {{args['idConta'] }}></input>
-			<input name = "idDispositivo" type = "text" class = "tiny-width" placeholder = "Dispositivo" style = "height:30px" value = {{ args['idDispositivo'] }}></input>
-			<input name = "dataInic" type = "date" class = "tiny-width" placeholder = "Data Início" style = "height:30px" value = {{args['dataInic']}}></input>
-			<input name = "dataFim" type = "date" class = "tiny-width" placeholder = "Data Fim" style = "height:30px" value = {{ args['dataFim'] }}></input>
-			<input name = "ehFraude" type = "checkbox" class = "tiny-width" style = "height:30px; margin-right: 10px" value = True></input>
-			<input type="submit" class="btn" value="Pesquisar"></input>
-		</div>
+
+   		
+   		<table border = "0" >
+		<tr>
+			<td> </td>
+			<td> </td>
+			<td> </td>
+			<td> </td>
+			<td>É Fraude</td>
+			<td></td>
+			<td></td>
+		<tr>
+
+		<tr>
+
+		</tr>
+			<td> <input name = "idConta" type = "text" class = "tiny-width" placeholder = "Conta" style = "height:30px" onkeydown = "enter_pressed(event)" value = {{args['idConta'] }} ></input> </td>
+			<td> <input name = "idDispositivo" type = "text" class = "tiny-width" placeholder = "Dispositivo" style = "height:30px" onkeydown = "enter_pressed(event)" value = {{ args['idDispositivo'] }}></input> </td>
+			<td> <input name = "dataInic" type = "date" class = "tiny-width" placeholder = "Data Início" style = "height:30px" value = {{args['dataInic']}}></input> </td>
+			<td> <input name = "dataFim" type = "date" class = "tiny-width" placeholder = "Data Fim" style = "height:30px" value = {{ args['dataFim'] }}></input> </td>
+			<td> <input name = "ehFraude" type = "checkbox" class = "tiny-width" style = "height:30px; margin-right: 10px" value = True></input> </td>
+			<td> 
+				<input type = "text" class = "tiny-width" style = "height:30px;" value = "" id = "address" onkeydown = "enter_pressed(event)" placeholder = "Localidade" > </input> 
+				<input name = "posicao" type = "text" class = "tiny-width" style = "height:30px; display: none" id = "posicao-input" value = "" > </input> 
+			</td>
+			<td> <input type = "button" class="btn btn-primary" value="Pesquisar" onclick = "send_form()"></input> </td>
+   		</table>
 	</form>
 </div>
 
@@ -44,13 +198,21 @@ Relatório
 		    <td> {{ transacao.data }} </td>
 		    <td> {{ transacao.valor }} </td>
 		    <td> {{ transacao.ehFraude }} </td>
-		    <td> {{ transacao.latitude }} </td>
-		    <td> {{ transacao.longitude }} </td>
+		    <td class = "latitude"> {{ transacao.latitude }} </td>
+		    <td class = "longitude"> {{ transacao.longitude }} </td>
 		</tr>
 	    {% endfor %}
 
 
 	</table>
+
+	<div style = "margin-top: 20px; text-align:center">
+		<button class="btn btn-success" onclick = "show_transactions()" style = "margin-bottom: 20px">Ver Resultados No Mapa</button>
+		<div id = "map_visualization" style = "height: 360px; width:360px; margin:auto">
+
+		</div>
+	</div>
+
 
 </div>
 
