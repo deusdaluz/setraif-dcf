@@ -1,6 +1,8 @@
 def configure(host=None):
+    secure = True
     if not host:
         host = "localhost:8080"
+        secure = False
     import google.appengine.ext.remote_api.remote_api_stub as remote_api_stub
 
     def auth_func():
@@ -17,5 +19,6 @@ def configure(host=None):
         auth_func,
         host,
         save_cookies=True,
+        secure=secure
     )
     remote_api_stub.MaybeInvokeAuthentication()
