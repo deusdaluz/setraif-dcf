@@ -311,7 +311,7 @@ def main_test(options, args):
                 if not module_loader:
                     raise Exception('Module {0} not found'.format(name))
                 module_path = module_loader.filename
-                if os.isdir(module_path):
+                if os.path.isdir(module_path):
                     suite.addTests(loader.discover(module_path, pattern="*_test.py"))
                     continue
             suite.addTests(loader.loadTestsFromName(name))
