@@ -17,6 +17,6 @@ def get_max_value(transacao, conta):
 	transacoes = Transacao.query(Transacao.idConta == transacao.idConta, Transacao.ehFraude == False).order(-Transacao.valor)
 	transacao_max = transacoes.get()
 	if (transacao_max is None):
-		return transacao.valor
+		return 0
 	else:
 		return transacao_max.valor
