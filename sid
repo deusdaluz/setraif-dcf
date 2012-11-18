@@ -50,6 +50,14 @@ DEPS = {
         "type": "pipdep",
         "link": True,
     },
+    "geventhttpclient": {
+        "type": "pipdep",
+        "link": False
+    },
+    "gevent": {
+        "type": "pipdep",
+        "link": False
+    },
     "jinja2": {
         "type": "pipdep",
         "pip_name": "jinja2==2.6",

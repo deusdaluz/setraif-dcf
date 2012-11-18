@@ -4,6 +4,7 @@
         "pythonExtraPaths": [
             'src',
             'tests',
+            'tools',
             'src/lib',
             'deps/google_appengine',
         ]

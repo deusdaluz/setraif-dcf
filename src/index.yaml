@@ -12,6 +12,20 @@ indexes:
 
 - kind: Transacao
   properties:
+  - name: ehFraude
+  - name: idConta
+  - name: data
+    direction: desc
+
+- kind: Transacao
+  properties:
+  - name: ehFraude
+  - name: idConta
+  - name: valor
+    direction: desc
+
+- kind: Transacao
+  properties:
   - name: idConta
   - name: data
 

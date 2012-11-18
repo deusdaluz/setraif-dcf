@@ -1,6 +1,6 @@
 def configure(host=None):
     secure = True
-    if not host:
+    if not host or host == "localhost:8080" or host == "127.0.0.1:8080":
         host = "localhost:8080"
         secure = False
     import google.appengine.ext.remote_api.remote_api_stub as remote_api_stub
