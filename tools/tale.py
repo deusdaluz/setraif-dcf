@@ -22,7 +22,7 @@ class TheTaleOfACustomer(object):
         self.id = id
         self.url = URL("http://{}/".format(hostname))
         self.http = HTTPClient.from_url(
-            self.url, concurrency=1
+            self.url, concurrency=1, network_timeout=10, connection_timeout=10
         )
         self.ntrans = 0
         self._initial_datetime = datetime.datetime.now()
