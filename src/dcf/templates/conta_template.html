@@ -8,20 +8,25 @@ Conta
 
 {% block content %}
 
+<h3> {{ conta.nome }} -  {{ conta.id }}  </h3>
 
-<table border = "1">
-		<tr>
-			<td>Conta</td>
-			<td>Nome</td>
-		<tr>
+<table id="hor-minimalist-a" border = "0">
+		<thead>
+			<th scope = "col">Dispositivo</th>
+			<th scope = "col">Tipo</th>
+		<thead>
 
-		<tr>
-		    <td> {{ conta.id }} </td>
-		    <td> {{ conta.nome }} </td>
+		<tbody>
 
+		{% for dispositivo in dispositivos %}
+		<tr>
+		    <td> {{ dispositivo.id }} </td>
+		    <td> {{ dispositivo.tipo }} </td>
 		</tr>
+		{% endfor %}
+		</tbody>
 	    
 
-	</table>
+</table>
 
 {% endblock %}

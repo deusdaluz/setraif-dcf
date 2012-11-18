@@ -19,6 +19,35 @@
 				    .center-text{
 				    	text-align: center;
 				    }
+
+
+					#hor-minimalist-a
+					{
+						font-family: "Lucida Sans Unicode", "Lucida Grande", Sans-Serif;
+						font-size: 12px;
+						background: #fff;
+						border-collapse: collapse;
+						text-align: left;
+					}
+					#hor-minimalist-a th
+					{
+						font-size: 14px;
+						font-weight: normal;
+						color: #039;
+						padding: 10px 8px;
+						border-bottom: 2px solid #6678b1;
+					}
+					#hor-minimalist-a td
+					{
+						color: #669;
+						padding: 9px 8px 0px 8px;
+					}
+					#hor-minimalist-a tbody tr:hover td
+					{
+						color: #009;
+					}
+
+
   			</style>
 	    </head>
 	    <body onload = "initialize()">
@@ -46,8 +75,6 @@
  			<div class = "container" style="margin-top: 62px;">
 		        	{% block content %}{% endblock %}
 		    </div>
-
-
 		</body>
 
 

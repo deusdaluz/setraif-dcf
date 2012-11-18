@@ -180,19 +180,19 @@ Relatório
 
 <div id="resultados-container">
 
-	<table border = "1">
-		<tr>
-			<td>Conta</td>
-			<td>Dispositivo</td>
-			<td>Data</td>
-			<td>Valor</td>
-			<td>É Fraude</td>
-			<td>Latitude</td>
-			<td>Longitude</td>
-		<tr>
+	<table border = "0" id="hor-minimalist-a">
+		<thead>
+			<th scope = "col"> Conta</th>
+			<th scope = "col"> Dispositivo</th>
+			<th scope = "col"> Data</th>
+			<th scope = "col"> Valor</th>
+			<th scope = "col"> É Fraude</th>
+			<th scope = "col"> Latitude</th>
+			<th scope = "col"> Longitude</th>
+		<thead>
 
 		{% for transacao in transacoes %}
-		<tr>
+		<tbody>
 		    <td><a href="/conta?conta={{ transacao.idConta }}"> {{ transacao.idConta }} </a></td>
 		    <td> {{ transacao.idDispositivo }} </td>
 		    <td> {{ transacao.data }} </td>
@@ -200,7 +200,7 @@ Relatório
 		    <td> {{ transacao.ehFraude }} </td>
 		    <td class = "latitude"> {{ transacao.latitude }} </td>
 		    <td class = "longitude"> {{ transacao.longitude }} </td>
-		</tr>
+		</tbody>
 	    {% endfor %}
 
 
