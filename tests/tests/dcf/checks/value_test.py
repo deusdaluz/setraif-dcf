@@ -3,6 +3,8 @@ import datetime
 from tests.dcf.gaetest import GaeTestCase
 import dcf.checks.value as value_check
 from dcf.models.transacao import Transacao
+from dcf.models.transacao import Conta
+from dcf.models.transacao import Dispositivo
 
 
 class ValueCheckTestCase(GaeTestCase):
@@ -15,7 +17,7 @@ class ValueCheckTestCase(GaeTestCase):
         self._now = datetime.datetime.now()
         self._seq = 0
 
-    def _new_transaction(self, value, is_fraud=False):
+    def _new_transaction(self, value, is_fraud=False ):
         self._seq += 1
         return Transacao(
             valor=value,
@@ -57,3 +59,7 @@ class ValueCheckTestCase(GaeTestCase):
         self.assertFalse(
             value_check.is_fraud(self._new_transaction(1001.00), None)
         )
+
+
+
+
