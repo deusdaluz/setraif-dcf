@@ -4,6 +4,7 @@ import time
 import functools
 from dcf.models.transacao import Transacao
 from dcf.models.transacao import Conta
+from dcf.models.transacao import Dispositivo
 import dcf.checks as checks
 from flask import render_template
 from datetime import datetime
@@ -153,7 +154,9 @@ def conta():
         return 'Conta nao disponivel'
 
     conta = Conta.get_by_id(args['conta'])
-    return render_template('conta_template.html', conta = conta)
+    dispositivos = Dispositivo.query().filter(Dispositivo.idConta == args['conta'] ).fetch()
+
+    return render_template('conta_template.html', conta = conta, dispositivos=dispositivos)
 
 
 @bp.route("/about")
