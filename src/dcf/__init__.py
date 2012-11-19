@@ -31,12 +31,16 @@ def _patch_werkzeug():
     HTMLStringO.readline = readline
 
 
-app = flask.Flask(__name__)
-app.debug = DEBUG
-flask.Flask.secret_key = SECRET_KEY
+def create_app():
+    app = flask.Flask(__name__)
+    app.debug = DEBUG
+    flask.Flask.secret_key = SECRET_KEY
 
-import dcf.views.helloworld as helloworld_view
-app.register_blueprint(helloworld_view.bp)
+    import dcf.views.helloworld as helloworld_view
+    app.register_blueprint(helloworld_view.bp)
+    return app
+
+app = create_app()
 
 if DEBUG:
     import inspect
